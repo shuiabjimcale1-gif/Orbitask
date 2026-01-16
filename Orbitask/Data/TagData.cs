@@ -1,0 +1,153 @@
+﻿using Dapper;
+using Microsoft.Data.SqlClient;
+using Orbitask.Data.Interfaces;
+using Orbitask.Models;
+
+namespace Orbitask.Data
+{
+    public class TagData : ITagData
+    {
+        private readonly string _connectionString;
+
+        public TagData(IConfiguration config)
+        {
+            _connectionString = config.GetConnectionString("DefaultConnection");
+        }
+
+        // ---------------------------------------------------------
+        // GET SINGLE TAG
+        // ---------------------------------------------------------
+        public async Task<Tag?> GetTag(int tagId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            return await connection.QuerySingleOrDefaultAsync<Tag>(
+                "SELECT * FROM Tags WHERE Id = @Id",
+                new { Id = tagId }
+            );
+        }
+
+        // ---------------------------------------------------------
+        // GET TAGS FOR BOARD
+        // ---------------------------------------------------------
+        public async Task<IEnumerable<Tag>> GetTagsForBoard(int boardId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            return await connection.QueryAsync<Tag>(
+                "SELECT * FROM Tags WHERE BoardId = @BoardId ORDER BY Title",
+                new { BoardId = boardId }
+            );
+        }
+
+        // ---------------------------------------------------------
+        // INSERT TAG
+        // ---------------------------------------------------------
+        public async Task<Tag> InsertTag(Tag tag)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = @"
+                    INSERT INTO Tags (Title, BoardId)
+                    OUTPUT Inserted.Id, Inserted.Title, Inserted.BoardId
+                    VALUES (@Title, @BoardId);";
+
+            return await connection.QuerySingleAsync<Tag>(sql, new
+            {
+                Title = tag.Title,
+                BoardId = tag.BoardId
+            });
+        }
+
+
+        // ---------------------------------------------------------
+        // UPDATE TAG
+        // ---------------------------------------------------------
+        public async Task<bool> UpdateTag(Tag tag)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = @"
+                UPDATE Tags
+                SET Title = @Title
+                WHERE Id = @Id;
+            ";
+
+            var rows = await connection.ExecuteAsync(sql, tag);
+            return rows > 0;
+        }
+
+        // ---------------------------------------------------------
+        // DELETE TAG
+        // ---------------------------------------------------------
+        public async Task<bool> DeleteTag(int tagId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var tx = connection.BeginTransaction();
+
+            try
+            {
+                // 1) Delete join rows first (TaskTags that reference this tag)
+                await connection.ExecuteAsync(
+                    "DELETE FROM TaskTags WHERE TagId = @Id;",
+                    new { Id = tagId },
+                    transaction: tx
+                );
+
+                // 2) Delete the tag
+                var rows = await connection.ExecuteAsync(
+                    "DELETE FROM Tags WHERE Id = @Id;",
+                    new { Id = tagId },
+                    transaction: tx
+                );
+
+                tx.Commit();
+                return rows > 0;
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+
+        // ---------------------------------------------------------
+        // EXISTENCE CHECKS
+        // ---------------------------------------------------------
+        public async Task<bool> TagExists(int tagId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            return await connection.ExecuteScalarAsync<bool>(
+                "SELECT CASE WHEN EXISTS (SELECT 1 FROM Tags WHERE Id = @Id) THEN 1 ELSE 0 END",
+                new { Id = tagId }
+            );
+        }
+
+        public async Task<bool> BoardExists(int boardId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            return await connection.ExecuteScalarAsync<bool>(
+                "SELECT CASE WHEN EXISTS (SELECT 1 FROM Boards WHERE Id = @Id) THEN 1 ELSE 0 END",
+                new { Id = boardId }
+            );
+        }
+
+        // ---------------------------------------------------------
+        // BOARD LOOKUP
+        // ---------------------------------------------------------
+        public async Task<int?> GetBoardIdForTag(int tagId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            return await connection.ExecuteScalarAsync<int?>(
+                "SELECT BoardId FROM Tags WHERE Id = @Id",
+                new { Id = tagId }
+            );
+        }
+    }
+}

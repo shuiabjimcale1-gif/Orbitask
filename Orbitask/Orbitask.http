@@ -1,0 +1,6 @@
+@Orbitask_HostAddress = http://localhost:5065
+
+GET {{Orbitask_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
