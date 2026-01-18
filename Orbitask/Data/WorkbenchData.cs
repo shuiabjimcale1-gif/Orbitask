@@ -96,7 +96,7 @@ namespace Orbitask.Data
                     "DELETE FROM WorkbenchMembers WHERE WorkbenchId = @Id;";
                 await connection.ExecuteAsync(deleteMembersSql, new { Id = id }, transaction);
 
-                // 7. Delete Workbench
+                // 7. Delete Workbench Last
                 var deleteWorkbenchSql =
                     "DELETE FROM Workbenches WHERE Id = @Id;";
                 var rows = await connection.ExecuteAsync(deleteWorkbenchSql, new { Id = id }, transaction);
