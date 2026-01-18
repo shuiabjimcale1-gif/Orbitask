@@ -6,5 +6,6 @@
 
         public int TaskItemId { get; set; }
         public int TagId { get; set; }
+        public int WorkbenchId { get; set; }
     }
 }

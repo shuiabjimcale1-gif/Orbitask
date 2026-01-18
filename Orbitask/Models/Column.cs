@@ -8,6 +8,6 @@
 
         // FK's
         public int BoardId { get; set; }
-
+        public int WorkbenchId { get; set; }
     }
 }

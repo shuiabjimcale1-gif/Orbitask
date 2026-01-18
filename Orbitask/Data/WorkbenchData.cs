@@ -66,16 +66,39 @@ namespace Orbitask.Data
 
             try
             {
-                // Delete Boards under this workbench
+                // 1. Delete TaskTags using TaskIds under this Workbench
+                var deleteTaskTagsSql =
+                    @"DELETE TT FROM TaskTags TT INNER JOIN Tasks T ON TT.TaskId = T.Id WHERE T.WorkbenchId = @Id;";
+                await connection.ExecuteAsync(deleteTaskTagsSql, new { Id = id }, transaction);
+
+                // 2. Delete Tags
+                var deleteTagsSql =
+                    "DELETE FROM Tags WHERE WorkbenchId = @Id;";
+                await connection.ExecuteAsync(deleteTagsSql, new { Id = id }, transaction);
+
+                // 3. Delete Tasks
+                var deleteTasksSql =
+                    "DELETE FROM Tasks WHERE WorkbenchId = @Id;";
+                await connection.ExecuteAsync(deleteTasksSql, new { Id = id }, transaction);
+
+                // 4. Delete Columns
+                var deleteColumnsSql =
+                    "DELETE FROM Columns WHERE WorkbenchId = @Id;";
+                await connection.ExecuteAsync(deleteColumnsSql, new { Id = id }, transaction);
+
+                // 5. Delete Boards
                 var deleteBoardsSql =
                     "DELETE FROM Boards WHERE WorkbenchId = @Id;";
-
                 await connection.ExecuteAsync(deleteBoardsSql, new { Id = id }, transaction);
 
-                // Finally delete the workbench
+                // 6. Delete Workbench Members (if exists)
+                var deleteMembersSql =
+                    "DELETE FROM WorkbenchMembers WHERE WorkbenchId = @Id;";
+                await connection.ExecuteAsync(deleteMembersSql, new { Id = id }, transaction);
+
+                // 7. Delete Workbench
                 var deleteWorkbenchSql =
                     "DELETE FROM Workbenches WHERE Id = @Id;";
-
                 var rows = await connection.ExecuteAsync(deleteWorkbenchSql, new { Id = id }, transaction);
 
                 await transaction.CommitAsync();
@@ -88,6 +111,7 @@ namespace Orbitask.Data
                 throw;
             }
         }
+
 
         public async Task<bool> WorkbenchExists(int id)
         {

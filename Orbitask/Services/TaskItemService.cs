@@ -1,17 +1,21 @@
 ﻿
+using Orbitask.Data;
+using Orbitask.Data.Interfaces;
 using Orbitask.Models;
 using Orbitask.Services.Interfaces;
-using Orbitask.Data.Interfaces;
 
 namespace Orbitask.Services
 {
     public class TaskItemService : ITaskItemService
     {
         private readonly ITaskItemData _taskData;
-
-        public TaskItemService(ITaskItemData taskData)
+        private readonly IColumnData _columnData;
+        private readonly IBoardData _boardData;
+        public TaskItemService(ITaskItemData taskData, IColumnData columnData, IBoardData boardData)
         {
             _taskData = taskData;
+            _columnData = columnData;
+            _boardData = boardData;
         }
 
 
@@ -35,47 +39,47 @@ namespace Orbitask.Services
 
         public async Task<TaskItem?> CreateTask(int columnId, TaskItem newTask)
         {
-            // Validate column exists
-            if (!await _taskData.ColumnExists(columnId))
+            var column = await _columnData.GetColumn(columnId);
+            if (column == null)
                 return null;
-
-            // Get board for column
-            var boardId = await _taskData.GetBoardIdForColumn(columnId);
-            if (boardId == null)
+            var board = await _boardData.GetBoard(column.BoardId);
+            if (board == null)
                 return null;
-
-            // Fill required fields
-            
             newTask.ColumnId = columnId;
-            newTask.BoardId = boardId.Value;
+            newTask.BoardId = board.Id;
+            newTask.WorkbenchId = board.WorkbenchId;
 
-            var createdTaskItem = await _taskData.InsertTask(newTask);
-            return createdTaskItem;
+            return await _taskData.InsertTask(newTask);
         }
+
 
 
         // UPDATE TASK
 
         public async Task<TaskItem?> UpdateTask(int taskId, TaskItem updated)
         {
-            // Check task exists
-            if (!await _taskData.TaskExists(taskId))
+            // Load the existing task (ensures it exists)
+            var existing = await _taskData.GetTask(taskId);
+            if (existing == null)
                 return null;
 
-            // Ensure updated task keeps correct ID
+            // Load the column (we need its BoardId)
+            var column = await _columnData.GetColumn(updated.ColumnId);
+            if (column == null)
+                return null;
+
+            // Load the board (we need its WorkbenchId)
+            var board = await _boardData.GetBoard(column.BoardId);
+            if (board == null)
+                return null;
+
+            // Apply required IDs
             updated.Id = taskId;
+            updated.ColumnId = column.Id;
+            updated.BoardId = board.Id;
+            updated.WorkbenchId = board.WorkbenchId;
 
-            // Validate column exists
-            if (!await _taskData.ColumnExists(updated.ColumnId))
-                return null;
-
-            // Validate board consistency
-            var boardId = await _taskData.GetBoardIdForColumn(updated.ColumnId);
-            if (boardId == null)
-                return null;
-
-            updated.BoardId = boardId.Value;
-
+            // Update
             var success = await _taskData.UpdateTask(updated);
             return success ? updated : null;
         }

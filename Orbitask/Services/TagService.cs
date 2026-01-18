@@ -7,6 +7,7 @@ namespace Orbitask.Services
     public class TagService : ITagService
     {
         private readonly ITagData _tagData;
+        private readonly IBoardData _boardData;
 
         public TagService(ITagData tagData)
         {
@@ -26,38 +27,42 @@ namespace Orbitask.Services
 
         public async Task<Tag?> CreateTag(int boardId, Tag newTag)
         {
-            // Validate board exists
-            if (!await _tagData.BoardExists(boardId))
+            var board = await _boardData.GetBoard(boardId);
+            if (board == null)
                 return null;
 
             newTag.BoardId = boardId;
+            newTag.WorkbenchId = board.WorkbenchId;
 
-            var createdTag =await _tagData.InsertTag(newTag);
-            return createdTag;
+            return await _tagData.InsertTag(newTag);
         }
+
 
 
         // UPDATE TAG
 
         public async Task<Tag?> UpdateTag(int tagId, Tag updated)
         {
-            // Validate tag exists
-            if (!await _tagData.TagExists(tagId))
+            // Load existing tag (ensures it exists)
+            var existing = await _tagData.GetTag(tagId);
+            if (existing == null)
                 return null;
 
-            // Keep ID consistent
+            // Load the board (authoritative WorkbenchId)
+            var board = await _boardData.GetBoard(existing.BoardId);
+            if (board == null)
+                return null;
+
+            // Override sensitive fields
             updated.Id = tagId;
+            updated.BoardId = existing.BoardId;
+            updated.WorkbenchId = board.WorkbenchId;
 
-            // Ensure board is still valid
-            var boardId = await _tagData.GetBoardIdForTag(tagId);
-            if (boardId == null)
-                return null;
-
-            updated.BoardId = boardId.Value;
-
+            // Update
             var success = await _tagData.UpdateTag(updated);
             return success ? updated : null;
         }
+
 
 
         // DELETE TAG

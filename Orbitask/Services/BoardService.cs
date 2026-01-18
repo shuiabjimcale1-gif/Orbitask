@@ -7,11 +7,12 @@ namespace Orbitask.Services
     public class BoardService : IBoardService
     {
         private readonly IBoardData boardData;
+        private readonly IWorkbenchData _workbenchData;
 
-        public BoardService(IBoardData boardData)
+        public BoardService(IBoardData boardData, IWorkbenchData workbenchData)
         {
             this.boardData = boardData;
-
+            _workbenchData = workbenchData;
         }
 
         public async Task<Board?> GetBoard(int boardId)
@@ -24,27 +25,34 @@ namespace Orbitask.Services
             return await boardData.GetBoardsForWorkbench(workbenchId);
         }
 
-        public async Task<Board?> CreateBoard(int WorkbenchId, Board newBoard)
+        public async Task<Board?> CreateBoard(int workbenchId, Board newBoard)
         {
-            if (!await boardData.WorkbenchExists(WorkbenchId))
+            var workbench = await _workbenchData.GetWorkbench(workbenchId);
+            if (workbench == null)
                 return null;
 
-            newBoard.WorkbenchId = WorkbenchId;
+            newBoard.WorkbenchId = workbenchId;
 
-            await boardData.InsertBoard(newBoard);
-            return newBoard;
+            return await boardData.InsertBoard(newBoard);
         }
+
 
         public async Task<Board?> UpdateBoard(int boardId, Board updated)
         {
-            if (!await boardData.BoardExists(boardId))
+            // Load existing board (ensures it exists and gives us WorkbenchId)
+            var existing = await boardData.GetBoard(boardId);
+            if (existing == null)
                 return null;
 
+            // Override sensitive fields
             updated.Id = boardId;
+            updated.WorkbenchId = existing.WorkbenchId;
 
+            // Update
             var success = await boardData.UpdateBoard(updated);
             return success ? updated : null;
         }
+
 
         public async Task<bool> DeleteBoard(int boardId)
         {
