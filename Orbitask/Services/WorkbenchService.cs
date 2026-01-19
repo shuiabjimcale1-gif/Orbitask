@@ -105,6 +105,26 @@ namespace Orbitask.Services
             return true;
         }
 
+        public async Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            var wb = await _data.GetWorkbench(workbenchId);
+
+            if (wb == null)
+            {
+                return false;
+            }
+
+            var updated = await _data.UpdateUserRole(workbenchId, userId, role);
+
+            if (!updated)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+
     }
 
 }

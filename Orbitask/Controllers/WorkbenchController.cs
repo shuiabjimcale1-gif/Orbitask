@@ -92,6 +92,20 @@ namespace Orbitask.Controllers
             return NoContent();
         }
 
+        [HttpPut("{id:int}/users/{userId}/role/{role}")]
+        public async Task<IActionResult> UpdateUserRole(int id, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            var updated = await _service.UpdateUserRole(id, userId, role);
+
+            if (!updated)
+            {
+                return NotFound();
+            }
+
+            return Ok();
+        }
+
+
 
 
     }

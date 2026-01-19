@@ -185,6 +185,27 @@ namespace Orbitask.Data
             return true;
         }
 
+        public async Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = "UPDATE WorkbenchMembers SET Role = @Role WHERE WorkbenchId = @WorkbenchId AND UserId = @UserId;";
+
+            var rows = await connection.ExecuteAsync(sql, new
+            {
+                WorkbenchId = workbenchId,
+                UserId = userId,
+                Role = role
+            });
+
+            if (rows <= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
 
 
     }
