@@ -50,6 +50,50 @@ namespace Orbitask.Controllers
             var success = await _service.DeleteWorkbench(id, userId);
             return success ? NoContent() : NotFound();
         }
+
+        [HttpGet("{id:int}/users")]
+        public async Task<IActionResult> GetUsersForWorkbench(int id)
+        {
+            var users = await _service.GetUsersForWorkbench(id);
+
+            if (users == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(users);
+        }
+
+        [HttpPost("{id:int}/users/{userId}")]
+        [HttpPost("{id:int}/users/{userId}/{role}")]
+        public async Task<IActionResult> AddUserToWorkbench(int id, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            var added = await _service.AddUserToWorkbench(id, userId, role);
+
+            if (!added)
+            {
+                return NotFound();
+            }
+
+            return Ok();
+        }
+
+
+        [HttpDelete("{id:int}/users/{userId}")]
+        public async Task<IActionResult> RemoveUserFromWorkbench(int id, string userId)
+        {
+            var removed = await _service.RemoveUserFromWorkbench(id, userId);
+
+            if (!removed)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
+
+
     }
 
 }

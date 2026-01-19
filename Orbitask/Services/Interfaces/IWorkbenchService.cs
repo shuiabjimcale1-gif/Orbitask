@@ -10,6 +10,10 @@ namespace Orbitask.Services.Interfaces
         Task<Workbench?> CreateWorkbench(string userId, Workbench workbench);
         Task<Workbench?> UpdateWorkbench(int id, Workbench updated);
         Task<bool> DeleteWorkbench(int id, string userId);
+
+        Task<IEnumerable<string>?> GetUsersForWorkbench(int workbenchId);
+        Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
+        Task<bool> RemoveUserFromWorkbench(int workbenchId, string userId);
     }
 
 }

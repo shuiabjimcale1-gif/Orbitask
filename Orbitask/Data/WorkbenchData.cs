@@ -96,7 +96,7 @@ namespace Orbitask.Data
                     "DELETE FROM WorkbenchMembers WHERE WorkbenchId = @Id;";
                 await connection.ExecuteAsync(deleteMembersSql, new { Id = id }, transaction);
 
-                // 7. Delete Workbench
+                // 7. Delete Workbench Last
                 var deleteWorkbenchSql =
                     "DELETE FROM Workbenches WHERE Id = @Id;";
                 var rows = await connection.ExecuteAsync(deleteWorkbenchSql, new { Id = id }, transaction);
@@ -132,5 +132,60 @@ namespace Orbitask.Data
                 new { Id = id, UserId = userId }
             );
         }
+
+        public async Task<IEnumerable<string>> GetUsersForWorkbench(int workbenchId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = @" SELECT UserId FROM WorkbenchMembers WHERE WorkbenchId = @WorkbenchId;";
+
+            var users = await connection.QueryAsync<string>(sql, new { WorkbenchId = workbenchId });
+            return users;
+        }
+
+        public async Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = "INSERT INTO WorkbenchMembers (WorkbenchId, UserId, Role) VALUES (@WorkbenchId, @UserId, @Role);";
+
+            var rows = await connection.ExecuteAsync(sql, new
+            {
+                WorkbenchId = workbenchId,
+                UserId = userId,
+                Role = role
+            });
+
+            if (rows <= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+
+        public async Task<bool> RemoveUserFromWorkbench(int workbenchId, string userId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = @" DELETE FROM WorkbenchMembers WHERE WorkbenchId = @WorkbenchId AND UserId = @UserId;";
+
+            var rows = await connection.ExecuteAsync(sql, new
+            {
+                WorkbenchId = workbenchId,
+                UserId = userId
+            });
+
+            if (rows <= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+
+
     }
 }
