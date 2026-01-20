@@ -30,6 +30,6 @@ The system emphasizes explicit data control, multi‑tenant safety, and predicta
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/shuiabjimcale1-gif/orbitask-backend.git
+https://github.com/shuiabjimcale1-gif/Orbitask.git
 cd orbitask-backend
 # Orbitask
