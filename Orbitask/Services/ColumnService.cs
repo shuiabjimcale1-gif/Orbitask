@@ -44,6 +44,7 @@ namespace Orbitask.Services
 
         public async Task<Column?> UpdateColumn(int columnId, Column updated)
         {
+
             // Load existing column (ensures it exists)
             var existing = await _columnData.GetColumn(columnId);
             if (existing == null)
@@ -68,6 +69,7 @@ namespace Orbitask.Services
 
         public async Task<bool> DeleteColumn(int columnId)
         {
+
             return await _columnData.DeleteColumn(columnId);
         }
     }

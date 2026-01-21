@@ -1,7 +1,8 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
-using Orbitask.Models;
 using Orbitask.Data.Interfaces;
+using Orbitask.Models;
+using System.Security.Claims;
 
 namespace Orbitask.Data
 {
@@ -29,22 +30,60 @@ namespace Orbitask.Data
             using var connection = new SqlConnection(_connectionString);
 
             return await connection.QueryAsync<Workbench>(
-                "SELECT * FROM Workbenches WHERE OwnerId = @UserId ORDER BY Name",
+                "SELECT w.* FROM Workbenches w INNER JOIN WorkbenchMembers m ON w.Id = m.WorkbenchId WHERE m.UserId = @UserId ORDER BY w.Name;",
                 new { UserId = userId }
             );
         }
 
-        public async Task<Workbench> InsertWorkbench(Workbench workbench)
+        public async Task<Workbench?> InsertWorkbench(String userId, Workbench workbench)
         {
             using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
 
-            var sql =
-                "INSERT INTO Workbenches (OwnerId, Name) " +
-                "OUTPUT INSERTED.Id, INSERTED.OwnerId, INSERTED.Name " +
-                "VALUES (@OwnerId, @Name);";
+            await using var transaction = await connection.BeginTransactionAsync();
 
-            return await connection.QuerySingleAsync<Workbench>(sql, workbench);
+            try
+            {
+                workbench.OwnerId = userId;
+
+                var sql = @"
+                    INSERT INTO Workbenches (OwnerId, Name)
+                    OUTPUT INSERTED.Id, INSERTED.OwnerId, INSERTED.Name
+                    VALUES (@OwnerId, @Name);";
+
+                var created = await connection.QuerySingleAsync<Workbench>(
+                    sql,
+                    workbench,
+                    transaction
+                );
+
+                var memberSql = @"
+                    INSERT INTO WorkbenchMembers (WorkbenchId, UserId, Role)
+                    OUTPUT INSERTED.WorkbenchId, INSERTED.UserId, INSERTED.Role
+                    VALUES (@WorkbenchId, @UserId, @Role);";
+
+                await connection.ExecuteAsync(
+                    memberSql,
+                    new
+                    {
+                        WorkbenchId = created.Id,
+                        UserId = userId,
+                        Role = WorkbenchMember.WorkbenchRole.Admin
+                    },
+                    transaction
+                );
+
+                // 3) Commit
+                await transaction.CommitAsync();
+                return created;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                return null;
+            }
         }
+
 
         public async Task<bool> UpdateWorkbench(Workbench workbench)
         {
@@ -103,12 +142,12 @@ namespace Orbitask.Data
 
                 await transaction.CommitAsync();
 
-                return rows > 0;
+                return rows> 0;
             }
             catch
             {
                 await transaction.RollbackAsync();
-                throw;
+                return false;
             }
         }
 
@@ -205,6 +244,22 @@ namespace Orbitask.Data
 
             return true;
         }
+
+        public async Task<WorkbenchMember?> GetMembership(int workbenchId, string userId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            var sql = @"SELECT WorkbenchId, UserId, Role 
+                FROM WorkbenchMembers 
+                WHERE WorkbenchId = @WorkbenchId AND UserId = @UserId;";
+
+            return await connection.QuerySingleOrDefaultAsync<WorkbenchMember>(sql, new
+            {
+                WorkbenchId = workbenchId,
+                UserId = userId
+            });
+        }
+
 
 
 

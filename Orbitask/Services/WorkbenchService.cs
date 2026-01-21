@@ -25,14 +25,11 @@ namespace Orbitask.Services
 
         public async Task<Workbench?> CreateWorkbench(string userId, Workbench workbench)
         {
-            workbench.OwnerId = userId;
-            return await _data.InsertWorkbench(workbench);
+            return await _data.InsertWorkbench(userId, workbench);
         }
 
         public async Task<Workbench?> UpdateWorkbench(int id, Workbench updated)
         {
-            if (!await _data.WorkbenchExists(id))
-                return null;
 
             updated.Id = id;
 
@@ -42,19 +39,11 @@ namespace Orbitask.Services
 
         public async Task<bool> DeleteWorkbench(int id, string userId)
         {
-            if (!await _data.UserOwnsWorkbench(id, userId))
-                return false;
-
             return await _data.DeleteWorkbench(id);
         }
         public async Task<IEnumerable<string>?> GetUsersForWorkbench(int workbenchId)
         {
-            var wb = await _data.GetWorkbench(workbenchId);
-
-            if (wb == null)
-            {
-                return null;
-            }
+            
 
             var users = await _data.GetUsersForWorkbench(workbenchId);
 
@@ -68,12 +57,7 @@ namespace Orbitask.Services
 
         public async Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
         {
-            var wb = await _data.GetWorkbench(workbenchId);
-
-            if (wb == null)
-            {
-                return false;
-            }
+            
 
             var added = await _data.AddUserToWorkbench(workbenchId, userId, role);
 
@@ -107,12 +91,6 @@ namespace Orbitask.Services
 
         public async Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
         {
-            var wb = await _data.GetWorkbench(workbenchId);
-
-            if (wb == null)
-            {
-                return false;
-            }
 
             var updated = await _data.UpdateUserRole(workbenchId, userId, role);
 
@@ -124,7 +102,10 @@ namespace Orbitask.Services
             return true;
         }
 
-
+        public async Task<WorkbenchMember?> GetMembership(int workbenchId, string userId)
+        {
+            return await _data.GetMembership(workbenchId, userId);
+        }
     }
 
 }

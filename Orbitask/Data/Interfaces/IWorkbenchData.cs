@@ -7,7 +7,7 @@ namespace Orbitask.Data.Interfaces
         Task<Workbench?> GetWorkbench(int id);
         Task<IEnumerable<Workbench>> GetWorkbenchesForUser(string userId);
 
-        Task<Workbench> InsertWorkbench(Workbench workbench);
+        Task<Workbench?> InsertWorkbench(string userId, Workbench workbench);
         Task<bool> UpdateWorkbench(Workbench workbench);
         Task<bool> DeleteWorkbench(int id);
 
@@ -17,6 +17,9 @@ namespace Orbitask.Data.Interfaces
         Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
         Task<bool> RemoveUserFromWorkbench(int workbenchId, string userId);
         Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
+
+        Task<WorkbenchMember?> GetMembership(int workbenchId, string userId);
+
 
 
     }
