@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration.UserSecrets;
@@ -9,6 +10,7 @@ using System.Security.Claims;
 namespace Orbitask.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/workbenches")]
     public class WorkbenchController : ControllerBase
     {

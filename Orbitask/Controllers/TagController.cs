@@ -1,67 +1,120 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Orbitask.Models;
+using Orbitask.Services;
 using Orbitask.Services.Interfaces;
+using System.Security.Claims;
 
 namespace Orbitask.Controllers
 {
     [Route("api")]
+
+    [Authorize]
     [ApiController]
     public class TagController : ControllerBase
     {
-        private readonly ITagService tagService;
+        private readonly ITagService _tagService;
+        private readonly IWorkbenchService _workbenchService;
+        private readonly IBoardService _boardService;
 
-        public TagController(ITagService tagService)
+        public TagController(ITagService _tagService, IWorkbenchService workbenchService, IBoardService boardService)
         {
-            this.tagService = tagService;
+            this._tagService = _tagService;
+            this._workbenchService = workbenchService;
+            this._boardService = boardService;
         }
 
-        [HttpPost]
-        [Route("boards/{boardId:int}/tags")]
+        [HttpPost("boards/{boardId:int}/tags")]
         public async Task<IActionResult> CreateTag(int boardId, [FromBody] Tag newTag)
         {
-            var tag = await tagService.CreateTag(boardId, newTag);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            // 1. Load the board from DB (never trust client WorkbenchId)
+            var board = await _boardService.GetBoard(boardId);
+            if (board == null)
+                return NotFound();
+
+            // 2. Check membership using the REAL WorkbenchId
+            var membership = await _workbenchService.GetMembership(board.WorkbenchId, userId);
+            if (membership == null || membership.Role != WorkbenchMember.WorkbenchRole.Admin)
+                return Forbid();
+
+            // 3. Create the tag (service will assign WorkbenchId from board)
+            var tag = await _tagService.CreateTag(boardId, newTag);
             if (tag == null)
-                return NotFound(); // board doesn't exist
+                return NotFound();
 
             return Ok(tag);
         }
 
-        [HttpGet]
-        [Route("tags/{tagId:int}")]
+
+        [HttpGet("tags/{tagId:int}")]
         public async Task<IActionResult> GetTag(int tagId)
         {
-            var tag = await tagService.GetTag(tagId);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            // 1. Load the tag from DB (trusted source)
+            var tag = await _tagService.GetTag(tagId);
             if (tag == null)
                 return NotFound();
 
+            // 2. Check membership using the REAL WorkbenchId
+            var membership = await _workbenchService.GetMembership(tag.WorkbenchId, userId);
+            if (membership == null)
+                return Forbid();
+
+            // 3. Return the tag
             return Ok(tag);
         }
 
-        [HttpPut]
-        [Route("tags/{tagId:int}")]
+
+        [HttpPut("tags/{tagId:int}")]
         public async Task<IActionResult> UpdateTag(int tagId, [FromBody] Tag updated)
         {
-            var tag = await tagService.UpdateTag(tagId, updated);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            // 1. Load the tag from DB (never trust client IDs)
+            var existing = await _tagService.GetTag(tagId);
+            if (existing == null)
+                return NotFound();
+
+            // 2. Check membership using the REAL WorkbenchId
+            var membership = await _workbenchService.GetMembership(existing.WorkbenchId, userId);
+            if (membership == null || membership.Role != WorkbenchMember.WorkbenchRole.Admin)
+                return Forbid();
+
+            // 3. Perform the update
+            var tag = await _tagService.UpdateTag(tagId, updated);
             if (tag == null)
                 return NotFound();
 
             return Ok(tag);
         }
 
-        [HttpDelete]
-        [Route("tags/{tagId:int}")]
+
+        [HttpDelete("tags/{tagId:int}")]
         public async Task<IActionResult> DeleteTag(int tagId)
         {
-            var success = await tagService.DeleteTag(tagId);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            // 1. Load the tag from DB (never trust client IDs)
+            var tag = await _tagService.GetTag(tagId);
+            if (tag == null)
+                return NotFound();
+
+            // 2. Check membership using the REAL WorkbenchId
+            var membership = await _workbenchService.GetMembership(tag.WorkbenchId, userId);
+            if (membership == null || membership.Role != WorkbenchMember.WorkbenchRole.Admin)
+                return Forbid();
+
+            // 3. Delete the tag
+            var success = await _tagService.DeleteTag(tagId);
             if (!success)
                 return NotFound();
 
             return NoContent();
         }
+
     }
 }
