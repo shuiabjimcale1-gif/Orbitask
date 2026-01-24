@@ -66,9 +66,8 @@ namespace Orbitask.Services
             updated.Id = boardId;
             updated.WorkbenchId = existing.WorkbenchId;  // 🔒 Can't change workbench
 
-            // 3. Update
-            var success = await _boardData.UpdateBoard(updated);
-            return success ? updated : null;
+            // 3. Update (now returns the updated board)
+            return await _boardData.UpdateBoard(updated);
         }
 
         // ============================================

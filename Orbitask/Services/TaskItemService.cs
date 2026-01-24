@@ -100,7 +100,7 @@ namespace Orbitask.Services
             updated.ColumnId = newColumn.Id;
 
             // 5. Update
-            var success = await _taskData.UpdateTask(updated);
+            var success = await _taskData.UpdateTask(updated);s
             return success ? updated : null;
         }
 

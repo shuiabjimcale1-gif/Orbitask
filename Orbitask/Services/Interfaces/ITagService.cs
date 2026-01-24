@@ -4,9 +4,10 @@ namespace Orbitask.Services.Interfaces
 {
     public interface ITagService
     {
-        Task<Tag?> CreateTag(int boardId, Tag newTag);
-        Task<bool> DeleteTag(int tagId);
         Task<Tag?> GetTag(int tagId);
+        Task<IEnumerable<Tag>> GetTagsForBoard(int boardId);
+        Task<Tag?> CreateTag(int boardId, Tag newTag);
         Task<Tag?> UpdateTag(int tagId, Tag updated);
+        Task<bool> DeleteTag(int tagId);
     }
 }

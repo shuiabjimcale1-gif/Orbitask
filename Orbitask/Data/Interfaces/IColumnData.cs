@@ -17,7 +17,8 @@ namespace Orbitask.Data.Interfaces
 
         // Helpers
         Task<int?> GetBoardIdForColumn(int columnId);
-        \
+
+        // ✅ Tenancy helper
         Task<int?> GetWorkbenchIdForColumn(int columnId);
     }
 }
