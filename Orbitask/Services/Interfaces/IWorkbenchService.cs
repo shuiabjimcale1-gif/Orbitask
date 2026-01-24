@@ -4,19 +4,16 @@ namespace Orbitask.Services.Interfaces
 {
     public interface IWorkbenchService
     {
-        Task<Workbench?> GetWorkbench(int id);
+        Task<Workbench?> GetWorkbench(int workbenchId);
         Task<IEnumerable<Workbench>> GetWorkbenchesForUser(string userId);
+        Task<Workbench?> CreateWorkbench(string userId, Workbench newWorkbench);
+        Task<Workbench?> UpdateWorkbench(int workbenchId, Workbench updated);
+        Task<bool> DeleteWorkbench(int workbenchId);
 
-        Task<Workbench?> CreateWorkbench(string userId,Workbench workbench);
-        Task<Workbench?> UpdateWorkbench(int id, Workbench updated);
-        Task<bool> DeleteWorkbench(int id, string userId);
-
-        Task<IEnumerable<string>?> GetUsersForWorkbench(int workbenchId);
-        Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
-        Task<bool> RemoveUserFromWorkbench(int workbenchId, string userId);
-        Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
         Task<WorkbenchMember?> GetMembership(int workbenchId, string userId);
-
+        Task<IEnumerable<WorkbenchMember>> GetMembers(int workbenchId);
+        Task<bool> InviteMember(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
+        Task<bool> UpdateMemberRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
+        Task<bool> RemoveMember(int workbenchId, string userId);
     }
-
 }
