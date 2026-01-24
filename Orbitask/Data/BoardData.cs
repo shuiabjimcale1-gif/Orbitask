@@ -14,6 +14,10 @@ namespace Orbitask.Data
             _connectionString = config.GetConnectionString("DefaultConnection");
         }
 
+        // ============================================
+        // GET SINGLE BOARD
+        // ============================================
+
         public async Task<Board?> GetBoard(int boardId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -24,15 +28,23 @@ namespace Orbitask.Data
             );
         }
 
-        public async Task<IEnumerable<Board>> GetBoardsForWorkbench(int WorkbenchId)
+        // ============================================
+        // GET BOARDS FOR WORKBENCH
+        // ============================================
+
+        public async Task<IEnumerable<Board>> GetBoardsForWorkbench(int workbenchId)
         {
             using var connection = new SqlConnection(_connectionString);
 
             return await connection.QueryAsync<Board>(
                 "SELECT * FROM Boards WHERE WorkbenchId = @WorkbenchId ORDER BY Name",
-                new { WorkbenchId = WorkbenchId }
+                new { WorkbenchId = workbenchId }
             );
         }
+
+        // ============================================
+        // INSERT BOARD
+        // ============================================
 
         public async Task<Board> InsertBoard(Board board)
         {
@@ -46,6 +58,10 @@ namespace Orbitask.Data
 
             return await connection.QuerySingleAsync<Board>(sql, board);
         }
+
+        // ============================================
+        // UPDATE BOARD
+        // ============================================
 
         public async Task<bool> UpdateBoard(Board board)
         {
@@ -61,6 +77,10 @@ namespace Orbitask.Data
             return rows > 0;
         }
 
+        // ============================================
+        // DELETE BOARD
+        // ============================================
+
         public async Task<bool> DeleteBoard(int boardId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -70,29 +90,47 @@ namespace Orbitask.Data
 
             try
             {
-                // Delete TaskTags for tasks in this board
-                var deleteTaskTagsSql =
-                    "DELETE TT FROM TaskTags TT INNER JOIN Tasks T ON TT.TaskId = T.Id WHERE T.BoardId = @BoardId;";
+                // 1. Delete TaskTags for tasks in this board
+                // ✅ FIXED: Tasks → TaskItems, TaskId → TaskItemId
+                await connection.ExecuteAsync(@"
+                    DELETE TT 
+                    FROM TaskTags TT 
+                    INNER JOIN TaskItems T ON TT.TaskItemId = T.Id 
+                    INNER JOIN Columns C ON T.ColumnId = C.Id
+                    WHERE C.BoardId = @BoardId",
+                    new { BoardId = boardId },
+                    transaction
+                );
 
-                await connection.ExecuteAsync(deleteTaskTagsSql, new { BoardId = boardId }, transaction);
+                // 2. Delete Tags belonging to this board
+                await connection.ExecuteAsync(
+                    "DELETE FROM Tags WHERE BoardId = @BoardId;",
+                    new { BoardId = boardId },
+                    transaction
+                );
 
-                // Delete Tags belonging to this board
-                var deleteTagsSql =
-                    "DELETE FROM Tags WHERE BoardId = @BoardId;";
+                // 3. Delete TaskItems in this board
+                // ✅ FIXED: Tasks → TaskItems
+                await connection.ExecuteAsync(@"
+                    DELETE FROM TaskItems 
+                    WHERE ColumnId IN (SELECT Id FROM Columns WHERE BoardId = @BoardId)",
+                    new { BoardId = boardId },
+                    transaction
+                );
 
-                await connection.ExecuteAsync(deleteTagsSql, new { BoardId = boardId }, transaction);
+                // 4. Delete Columns in this board
+                await connection.ExecuteAsync(
+                    "DELETE FROM Columns WHERE BoardId = @BoardId;",
+                    new { BoardId = boardId },
+                    transaction
+                );
 
-                // Delete Tasks belonging to this board
-                var deleteTasksSql =
-                    "DELETE FROM Tasks WHERE BoardId = @BoardId;";
-
-                await connection.ExecuteAsync(deleteTasksSql, new { BoardId = boardId }, transaction);
-
-                // Finally delete the board
-                var deleteBoardSql =
-                    "DELETE FROM Boards WHERE Id = @BoardId;";
-
-                var rows = await connection.ExecuteAsync(deleteBoardSql, new { BoardId = boardId }, transaction);
+                // 5. Finally delete the board
+                var rows = await connection.ExecuteAsync(
+                    "DELETE FROM Boards WHERE Id = @BoardId;",
+                    new { BoardId = boardId },
+                    transaction
+                );
 
                 await transaction.CommitAsync();
 
@@ -105,7 +143,9 @@ namespace Orbitask.Data
             }
         }
 
-
+        // ============================================
+        // EXISTENCE CHECKS
+        // ============================================
 
         public async Task<bool> BoardExists(int boardId)
         {
@@ -117,15 +157,14 @@ namespace Orbitask.Data
             );
         }
 
-        public async Task<bool> WorkbenchExists(int WorkbenchId)
+        public async Task<bool> WorkbenchExists(int workbenchId)
         {
             using var connection = new SqlConnection(_connectionString);
 
             return await connection.ExecuteScalarAsync<bool>(
                 "SELECT CASE WHEN EXISTS (SELECT 1 FROM Workbenches WHERE Id = @Id) THEN 1 ELSE 0 END",
-                new { Id = WorkbenchId }
+                new { Id = workbenchId }
             );
         }
-
     }
 }
