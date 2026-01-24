@@ -14,6 +14,10 @@ namespace Orbitask.Data
             _connectionString = config.GetConnectionString("DefaultConnection");
         }
 
+        // ============================================
+        // GET SINGLE COLUMN
+        // ============================================
+
         public async Task<Column?> GetColumn(int columnId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -23,6 +27,10 @@ namespace Orbitask.Data
                 new { Id = columnId }
             );
         }
+
+        // ============================================
+        // GET COLUMNS FOR BOARD
+        // ============================================
 
         public async Task<IEnumerable<Column>> GetColumnsForBoard(int boardId)
         {
@@ -34,41 +42,57 @@ namespace Orbitask.Data
             );
         }
 
+        // ============================================
+        // INSERT COLUMN
+        // ============================================
+
         public async Task<Column?> InsertColumn(Column column)
         {
             using var connection = new SqlConnection(_connectionString);
 
-            var sql = @"INSERT INTO Columns (BoardId, Title, Position)
-                        OUTPUT INSERTED.Id,
-                            INSERTED.BoardId,
-                            INSERTED.Title,
-                            INSERTED.Position
-                        VALUES (@BoardId, @Title, @Position);
-                        ";
+            var sql = @"
+                INSERT INTO Columns (BoardId, Title, Position)
+                OUTPUT 
+                    INSERTED.Id,
+                    INSERTED.BoardId,
+                    INSERTED.Title,
+                    INSERTED.Position
+                VALUES (@BoardId, @Title, @Position);
+            ";
 
-            var columnCreated = await connection.QuerySingleAsync<Column>(sql, column);
-            return columnCreated;
+            // ❌ REMOVED: WorkbenchId from INSERT
+
+            return await connection.QuerySingleAsync<Column>(sql, column);
         }
+
+        // ============================================
+        // UPDATE COLUMN
+        // ============================================
 
         public async Task<Column?> UpdateColumn(Column column)
         {
             using var connection = new SqlConnection(_connectionString);
 
             var sql = @"
-                        UPDATE Columns
-                        SET Title = @Title,
-                            Position = @Position
-                        OUTPUT
-                            INSERTED.Id,
-                            INSERTED.BoardId,
-                            INSERTED.Title,
-                            INSERTED.Position
-                        WHERE Id = @Id;
-                        ";
+                UPDATE Columns
+                SET Title = @Title,
+                    Position = @Position
+                OUTPUT
+                    INSERTED.Id,
+                    INSERTED.BoardId,
+                    INSERTED.Title,
+                    INSERTED.Position
+                WHERE Id = @Id;
+            ";
+
+            // ❌ REMOVED: WorkbenchId from UPDATE
 
             return await connection.QuerySingleOrDefaultAsync<Column>(sql, column);
         }
 
+        // ============================================
+        // DELETE COLUMN
+        // ============================================
 
         public async Task<bool> DeleteColumn(int columnId)
         {
@@ -80,8 +104,12 @@ namespace Orbitask.Data
             try
             {
                 // 1) Delete TaskTags for tasks in this column
-                await connection.ExecuteAsync(
-                    "DELETE TT FROM TaskTags TT INNER JOIN TaskItems TI ON TI.Id = TT.TaskItemId WHERE TI.ColumnId = @ColumnId;",
+                // ✅ FIXED: TaskId → TaskItemId
+                await connection.ExecuteAsync(@"
+                    DELETE TT 
+                    FROM TaskTags TT 
+                    INNER JOIN TaskItems TI ON TI.Id = TT.TaskItemId 
+                    WHERE TI.ColumnId = @ColumnId",
                     new { ColumnId = columnId },
                     tx
                 );
@@ -110,6 +138,9 @@ namespace Orbitask.Data
             }
         }
 
+        // ============================================
+        // EXISTENCE CHECKS
+        // ============================================
 
         public async Task<bool> ColumnExists(int columnId)
         {
@@ -131,6 +162,10 @@ namespace Orbitask.Data
             );
         }
 
+        // ============================================
+        // HELPERS
+        // ============================================
+
         public async Task<int?> GetBoardIdForColumn(int columnId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -140,6 +175,27 @@ namespace Orbitask.Data
                 new { Id = columnId }
             );
         }
+
+        // ============================================
+        // TENANCY HELPER (NEW)
+        // ============================================
+
+        /// <summary>
+        /// Gets the WorkbenchId for a column by JOINing through Board.
+        /// Used for authorization checks.
+        /// </summary>
+        public async Task<int?> GetWorkbenchIdForColumn(int columnId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            // ✅ Go up the tree: Column → Board → Workbench
+            return await connection.QuerySingleOrDefaultAsync<int?>(@"
+                SELECT b.WorkbenchId 
+                FROM Columns c
+                INNER JOIN Boards b ON c.BoardId = b.Id
+                WHERE c.Id = @ColumnId",
+                new { ColumnId = columnId }
+            );
+        }
     }
 }
-

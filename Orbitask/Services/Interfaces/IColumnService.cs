@@ -6,7 +6,6 @@ namespace Orbitask.Services.Interfaces
     {
         Task<Column?> GetColumn(int columnId);
         Task<IEnumerable<Column>> GetColumnsForBoard(int boardId);
-
         Task<Column?> CreateColumn(int boardId, Column newColumn);
         Task<Column?> UpdateColumn(int columnId, Column updated);
         Task<bool> DeleteColumn(int columnId);
