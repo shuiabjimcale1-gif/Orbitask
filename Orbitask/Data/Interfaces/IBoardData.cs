@@ -8,7 +8,7 @@ namespace Orbitask.Data.Interfaces
         Task<Board?> GetBoard(int boardId);
         Task<IEnumerable<Board>> GetBoardsForWorkbench(int workbenchId);
         Task<Board> InsertBoard(Board board);
-        Task<bool> UpdateBoard(Board board);
+        Task<Board?> UpdateBoard(Board board);
         Task<bool> DeleteBoard(int boardId);
 
         // Existence checks

@@ -77,11 +77,10 @@ namespace Orbitask.Data
                 UPDATE Columns
                 SET Title = @Title,
                     Position = @Position
-                OUTPUT
-                    INSERTED.Id,
-                    INSERTED.BoardId,
-                    INSERTED.Title,
-                    INSERTED.Position
+                WHERE Id = @Id;
+                
+                SELECT Id, BoardId, Title, Position
+                FROM Columns
                 WHERE Id = @Id;
             ";
 

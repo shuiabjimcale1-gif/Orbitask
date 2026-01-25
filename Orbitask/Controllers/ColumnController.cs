@@ -208,18 +208,22 @@ namespace Orbitask.Controllers
 
             try
             {
+                // 1. Check column exists
                 var column = await _columnService.GetColumn(columnId);
                 if (column == null)
                     return NotFound("Column not found");
 
+                // 2. 🔒 TENANCY WALL: Get WorkbenchId via JOIN
                 var workbenchId = await GetWorkbenchIdForColumn(columnId);
                 if (workbenchId == null)
                     return NotFound("Column workbench not found");
 
+                // 3. 🔒 TENANCY WALL: Check membership with ADMIN role
                 var membership = await _workbenchService.GetMembership(workbenchId.Value, userId);
                 if (membership == null || membership.Role != WorkbenchMember.WorkbenchRole.Admin)
                     return Forbid();
 
+                // 4. Delete
                 var success = await _columnService.DeleteColumn(columnId);
                 if (!success)
                     return NotFound("Column not found");

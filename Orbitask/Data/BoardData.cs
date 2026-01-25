@@ -63,7 +63,7 @@ namespace Orbitask.Data
         // UPDATE BOARD
         // ============================================
 
-        public async Task<bool> UpdateBoard(Board board)
+        public async Task<Board?> UpdateBoard(Board board)
         {
             using var connection = new SqlConnection(_connectionString);
 
@@ -71,10 +71,13 @@ namespace Orbitask.Data
                 UPDATE Boards
                 SET Name = @Name
                 WHERE Id = @Id;
+                
+                SELECT Id, Name, WorkbenchId
+                FROM Boards
+                WHERE Id = @Id;
             ";
 
-            var rows = await connection.ExecuteAsync(sql, board);
-            return rows > 0;
+            return await connection.QuerySingleOrDefaultAsync<Board>(sql, board);
         }
 
         // ============================================
