@@ -217,6 +217,9 @@ namespace Orbitask.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("WorkbenchId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BoardId");
@@ -231,9 +234,6 @@ namespace Orbitask.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BoardId")
-                        .HasColumnType("int");
 
                     b.Property<int>("ColumnId")
                         .HasColumnType("int");
@@ -257,8 +257,6 @@ namespace Orbitask.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BoardId");
-
                     b.HasIndex("ColumnId");
 
                     b.ToTable("TaskItems");
@@ -270,6 +268,9 @@ namespace Orbitask.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("TagId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkbenchId")
                         .HasColumnType("int");
 
                     b.HasKey("TaskItemId", "TagId");
@@ -363,10 +364,6 @@ namespace Orbitask.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("OwnerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Workbenches");
@@ -386,6 +383,10 @@ namespace Orbitask.Migrations
                     b.HasKey("WorkbenchId", "UserId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("WorkbenchId")
+                        .IsUnique()
+                        .HasFilter("[Role] = 0");
 
                     b.ToTable("WorkbenchMembers");
                 });
@@ -470,12 +471,6 @@ namespace Orbitask.Migrations
 
             modelBuilder.Entity("Orbitask.Models.TaskItem", b =>
                 {
-                    b.HasOne("Orbitask.Models.Board", null)
-                        .WithMany()
-                        .HasForeignKey("BoardId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
                     b.HasOne("Orbitask.Models.Column", null)
                         .WithMany()
                         .HasForeignKey("ColumnId")
