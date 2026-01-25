@@ -22,6 +22,8 @@ namespace Orbitask.Services
             {
                 new Claim(JwtRegisteredClaimNames.Email,user.Email),
                 new Claim(JwtRegisteredClaimNames.GivenName,user.UserName),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+
             };
             var credidentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
             var tokenDescriptor = new SecurityTokenDescriptor

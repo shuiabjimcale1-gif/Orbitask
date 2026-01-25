@@ -65,7 +65,7 @@ namespace Orbitask.Controllers
         {
             if (!ModelState.IsValid)
             {
-                BadRequest(ModelState);
+                return BadRequest(ModelState);
             }
             var user = await userManager.Users.FirstOrDefaultAsync(u => u.UserName == loginDto.UserName.ToLower());
             if (user == null)
