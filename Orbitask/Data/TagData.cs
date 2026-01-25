@@ -14,9 +14,10 @@ namespace Orbitask.Data
             _connectionString = config.GetConnectionString("DefaultConnection");
         }
 
-        // ---------------------------------------------------------
+        // ============================================
         // GET SINGLE TAG
-        // ---------------------------------------------------------
+        // ============================================
+
         public async Task<Tag?> GetTag(int tagId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -27,9 +28,10 @@ namespace Orbitask.Data
             );
         }
 
-        // ---------------------------------------------------------
+        // ============================================
         // GET TAGS FOR BOARD
-        // ---------------------------------------------------------
+        // ============================================
+
         public async Task<IEnumerable<Tag>> GetTagsForBoard(int boardId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -40,30 +42,30 @@ namespace Orbitask.Data
             );
         }
 
-        // ---------------------------------------------------------
+        // ============================================
         // INSERT TAG
-        // ---------------------------------------------------------
+        // ============================================
+
         public async Task<Tag> InsertTag(Tag tag)
         {
             using var connection = new SqlConnection(_connectionString);
 
             var sql = @"
-                    INSERT INTO Tags (Title, BoardId)
-                    OUTPUT Inserted.Id, Inserted.Title, Inserted.BoardId
-                    VALUES (@Title, @BoardId);";
+                INSERT INTO Tags (Title, BoardId)
+                OUTPUT INSERTED.Id, INSERTED.Title, INSERTED.BoardId
+                VALUES (@Title, @BoardId);
+            ";
 
-            return await connection.QuerySingleAsync<Tag>(sql, new
-            {
-                Title = tag.Title,
-                BoardId = tag.BoardId
-            });
+            // ❌ REMOVED: WorkbenchId from INSERT
+
+            return await connection.QuerySingleAsync<Tag>(sql, tag);
         }
 
-
-        // ---------------------------------------------------------
+        // ============================================
         // UPDATE TAG
-        // ---------------------------------------------------------
-        public async Task<bool> UpdateTag(Tag tag)
+        // ============================================
+
+        public async Task<Tag?> UpdateTag(Tag tag)
         {
             using var connection = new SqlConnection(_connectionString);
 
@@ -71,15 +73,22 @@ namespace Orbitask.Data
                 UPDATE Tags
                 SET Title = @Title
                 WHERE Id = @Id;
+                
+                SELECT Id, Title, BoardId
+                FROM Tags
+                WHERE Id = @Id;
             ";
 
-            var rows = await connection.ExecuteAsync(sql, tag);
-            return rows > 0;
+            // ❌ REMOVED: WorkbenchId from UPDATE
+            // Note: BoardId is NOT updateable (tags can't move between boards)
+
+            return await connection.QuerySingleOrDefaultAsync<Tag>(sql, tag);
         }
 
-        // ---------------------------------------------------------
+        // ============================================
         // DELETE TAG
-        // ---------------------------------------------------------
+        // ============================================
+
         public async Task<bool> DeleteTag(int tagId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -89,7 +98,8 @@ namespace Orbitask.Data
 
             try
             {
-                // 1) Delete join rows first (TaskTags that reference this tag)
+                // 1) Delete TaskTags first (foreign key dependency)
+                // ✅ Uses TagId (no change needed here - it's correct)
                 await connection.ExecuteAsync(
                     "DELETE FROM TaskTags WHERE TagId = @Id;",
                     new { Id = tagId },
@@ -113,10 +123,10 @@ namespace Orbitask.Data
             }
         }
 
-
-        // ---------------------------------------------------------
+        // ============================================
         // EXISTENCE CHECKS
-        // ---------------------------------------------------------
+        // ============================================
+
         public async Task<bool> TagExists(int tagId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -137,9 +147,10 @@ namespace Orbitask.Data
             );
         }
 
-        // ---------------------------------------------------------
+        // ============================================
         // BOARD LOOKUP
-        // ---------------------------------------------------------
+        // ============================================
+
         public async Task<int?> GetBoardIdForTag(int tagId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -147,6 +158,28 @@ namespace Orbitask.Data
             return await connection.ExecuteScalarAsync<int?>(
                 "SELECT BoardId FROM Tags WHERE Id = @Id",
                 new { Id = tagId }
+            );
+        }
+
+        // ============================================
+        // TENANCY HELPER (NEW)
+        // ============================================
+
+        /// <summary>
+        /// Gets the WorkbenchId for a tag by JOINing through Board.
+        /// Used for authorization checks.
+        /// </summary>
+        public async Task<int?> GetWorkbenchIdForTag(int tagId)
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            // ✅ Go up the tree: Tag → Board → Workbench
+            return await connection.QuerySingleOrDefaultAsync<int?>(@"
+                SELECT b.WorkbenchId 
+                FROM Tags t
+                INNER JOIN Boards b ON t.BoardId = b.Id
+                WHERE t.Id = @TagId",
+                new { TagId = tagId }
             );
         }
     }
