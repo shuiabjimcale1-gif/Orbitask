@@ -38,11 +38,19 @@ namespace Orbitask.Services
         // ============================================
 
         public async Task<Column?> CreateColumn(int boardId, Column newColumn)
-        { 
+        {
+            // 1. Validate board exists
             var board = await _boardData.GetBoard(boardId);
             if (board == null)
                 return null;
+
+            // 2. Set only direct parent FK
             newColumn.BoardId = boardId;
+
+            // ❌ REMOVED: newColumn.WorkbenchId = board.WorkbenchId;
+            // WorkbenchId now derived via JOIN when needed
+
+            // 3. Insert
             return await _columnData.InsertColumn(newColumn);
         }
 
@@ -52,13 +60,18 @@ namespace Orbitask.Services
 
         public async Task<Column?> UpdateColumn(int columnId, Column updated)
         {
+            // 1. Load existing column (ensures it exists)
             var existing = await _columnData.GetColumn(columnId);
             if (existing == null)
                 return null;
 
+            // 2. Apply required IDs
             updated.Id = columnId;
-            updated.BoardId = existing.BoardId; 
+            updated.BoardId = existing.BoardId;  // Can't change board
 
+            // ❌ REMOVED: updated.WorkbenchId = ...
+
+            // 3. Update (now returns the updated column)
             return await _columnData.UpdateColumn(updated);
         }
 

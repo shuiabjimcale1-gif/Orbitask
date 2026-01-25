@@ -23,12 +23,9 @@ namespace Orbitask.Database
         {
             base.OnModelCreating(modelBuilder);
 
-            // ---------------------------
-            // WORKBENCH MEMBER (WORKBENCH <-> User)
-            // ---------------------------
+
             modelBuilder.Entity<WorkbenchMember>()
                 .HasKey(wm => new { wm.WorkbenchId, wm.UserId });
-
             modelBuilder.Entity<WorkbenchMember>()
                 .Property(wm => wm.Role)
                 .HasConversion<int>();
@@ -45,9 +42,15 @@ namespace Orbitask.Database
                 .HasForeignKey(wm => wm.WorkbenchId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            // ---------------------------
+            modelBuilder.Entity<WorkbenchMember>()
+                .HasIndex(wm => wm.WorkbenchId)
+                .IsUnique()
+                .HasFilter("[Role] = 0");  
+
+            // ============================================
             // TASK TAG (TaskItem <-> Tag)
-            // ---------------------------
+            // ============================================
+
             modelBuilder.Entity<TaskTag>()
                 .HasKey(tt => new { tt.TaskItemId, tt.TagId });
 
@@ -63,49 +66,44 @@ namespace Orbitask.Database
                 .HasForeignKey(tt => tt.TagId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            // ---------------------------
-            // COLUMN -> BOARD
-            // ---------------------------
-            modelBuilder.Entity<Column>()
-                .HasOne<Board>()
-                .WithMany()
-                .HasForeignKey(c => c.BoardId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            // ---------------------------
-            // TASKITEM -> COLUMN
-            // ---------------------------
-            modelBuilder.Entity<TaskItem>()
-                .HasOne<Column>()
-                .WithMany()
-                .HasForeignKey(t => t.ColumnId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            // ---------------------------
-            // TASKITEM -> BOARD
-            // ---------------------------
-            modelBuilder.Entity<TaskItem>()
-                .HasOne<Board>()
-                .WithMany()
-                .HasForeignKey(t => t.BoardId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            // ---------------------------
+            // ============================================
             // BOARD -> WORKBENCH
-            // ---------------------------
+            // ============================================
+
             modelBuilder.Entity<Board>()
                 .HasOne<Workbench>()
                 .WithMany()
                 .HasForeignKey(b => b.WorkbenchId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            // ---------------------------
-            // TAG -> BOARD
-            // ---------------------------
+            // ============================================
+            // COLUMN -> BOARD (Only direct parent)
+            // ============================================
+
+            modelBuilder.Entity<Column>()
+                .HasOne<Board>()
+                .WithMany()
+                .HasForeignKey(c => c.BoardId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // ============================================
+            // TAG -> BOARD (Only direct parent)
+            // ============================================
+
             modelBuilder.Entity<Tag>()
                 .HasOne<Board>()
                 .WithMany()
                 .HasForeignKey(t => t.BoardId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // ============================================
+            // TASKITEM -> COLUMN (Only direct parent)
+            // ============================================
+
+            modelBuilder.Entity<TaskItem>()
+                .HasOne<Column>()
+                .WithMany()
+                .HasForeignKey(t => t.ColumnId)
                 .OnDelete(DeleteBehavior.NoAction);
         }
     }

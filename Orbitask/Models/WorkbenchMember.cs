@@ -4,12 +4,13 @@
     {
         public enum WorkbenchRole
         {
-            Admin = 1,
-            Member = 2
+            Owner = 0,   // Creator, can delete, will be billed
+            Admin = 1,   // Can manage, but can't delete
+            Member = 2   // Can work, limited permissions
         }
 
-        public string UserId { get; set; }
         public int WorkbenchId { get; set; }
+        public string UserId { get; set; } = string.Empty;
         public WorkbenchRole Role { get; set; }
     }
 }
