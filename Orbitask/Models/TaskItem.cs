@@ -11,8 +11,6 @@
 
         // FK's
         public int ColumnId { get; set; }
-        public int BoardId { get; set; }
-        public int WorkbenchId { get; set; }
 
     }
 }

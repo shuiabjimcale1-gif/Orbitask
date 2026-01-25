@@ -6,106 +6,88 @@ namespace Orbitask.Services
 {
     public class WorkbenchService : IWorkbenchService
     {
-        private readonly IWorkbenchData _data;
+        private readonly IWorkbenchData _workbenchData;
 
-        public WorkbenchService(IWorkbenchData data)
+        public WorkbenchService(IWorkbenchData workbenchData)
         {
-            _data = data;
+            _workbenchData = workbenchData;
         }
 
-        public async Task<Workbench?> GetWorkbench(int id)
+        public async Task<Workbench?> GetWorkbench(int workbenchId)
         {
-            return await _data.GetWorkbench(id);
+            return await _workbenchData.GetWorkbench(workbenchId);
         }
 
         public async Task<IEnumerable<Workbench>> GetWorkbenchesForUser(string userId)
         {
-            return await _data.GetWorkbenchesForUser(userId);
+            return await _workbenchData.GetWorkbenchesForUser(userId);
         }
 
-        public async Task<Workbench?> CreateWorkbench(string userId, Workbench workbench)
+        // ✅ Creator becomes Owner automatically
+        public async Task<Workbench?> CreateWorkbench(string userId, Workbench newWorkbench)
         {
-            return await _data.InsertWorkbench(userId, workbench);
-        }
+            var workbench = await _workbenchData.InsertWorkbench(newWorkbench);
 
-        public async Task<Workbench?> UpdateWorkbench(int id, Workbench updated)
-        {
-
-            updated.Id = id;
-
-            var success = await _data.UpdateWorkbench(updated);
-            return success ? updated : null;
-        }
-
-        public async Task<bool> DeleteWorkbench(int id, string userId)
-        {
-            return await _data.DeleteWorkbench(id);
-        }
-        public async Task<IEnumerable<string>?> GetUsersForWorkbench(int workbenchId)
-        {
-            
-
-            var users = await _data.GetUsersForWorkbench(workbenchId);
-
-            if (users == null)
+            var membership = new WorkbenchMember
             {
-                return null;
-            }
+                WorkbenchId = workbench.Id,
+                UserId = userId,
+                Role = WorkbenchMember.WorkbenchRole.Owner  // Not Admin!
+            };
 
-            return users;
+            await _workbenchData.AddMember(membership);
+            return workbench;
         }
 
-        public async Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
+        public async Task<Workbench?> UpdateWorkbench(int workbenchId, Workbench updated)
         {
-            
+            var existing = await _workbenchData.GetWorkbench(workbenchId);
+            if (existing == null) return null;
 
-            var added = await _data.AddUserToWorkbench(workbenchId, userId, role);
+            updated.Id = workbenchId;
+            return await _workbenchData.UpdateWorkbench(updated);
+        }
 
-            if (!added)
-            {
+        public async Task<bool> DeleteWorkbench(int workbenchId)
+        {
+            if (!await _workbenchData.WorkbenchExists(workbenchId))
                 return false;
-            }
-
-            return true;
-        }
-
-
-        public async Task<bool> RemoveUserFromWorkbench(int workbenchId, string userId)
-        {
-            var wb = await _data.GetWorkbench(workbenchId);
-
-            if (wb == null)
-            {
-                return false;
-            }
-
-            var removed = await _data.RemoveUserFromWorkbench(workbenchId, userId);
-
-            if (!removed)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        public async Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
-        {
-
-            var updated = await _data.UpdateUserRole(workbenchId, userId, role);
-
-            if (!updated)
-            {
-                return false;
-            }
-
-            return true;
+            return await _workbenchData.DeleteWorkbench(workbenchId);
         }
 
         public async Task<WorkbenchMember?> GetMembership(int workbenchId, string userId)
         {
-            return await _data.GetMembership(workbenchId, userId);
+            return await _workbenchData.GetMembership(workbenchId, userId);
+        }
+
+        public async Task<IEnumerable<WorkbenchMember>> GetMembers(int workbenchId)
+        {
+            return await _workbenchData.GetMembersForWorkbench(workbenchId);
+        }
+
+        public async Task<bool> InviteMember(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            if (!await _workbenchData.UserExists(userId)) return false;
+            if (!await _workbenchData.WorkbenchExists(workbenchId)) return false;
+
+            var member = new WorkbenchMember
+            {
+                WorkbenchId = workbenchId,
+                UserId = userId,
+                Role = role
+            };
+
+            return await _workbenchData.AddMember(member);
+        }
+
+        public async Task<bool> UpdateMemberRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role)
+        {
+            return await _workbenchData.UpdateMemberRole(workbenchId, userId, role);
+        }
+
+        public async Task<bool> RemoveMember(int workbenchId, string userId)
+        {
+            return await _workbenchData.RemoveMember(workbenchId, userId);
         }
     }
-
 }

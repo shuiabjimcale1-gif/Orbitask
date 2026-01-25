@@ -4,24 +4,22 @@ namespace Orbitask.Data.Interfaces
 {
     public interface IWorkbenchData
     {
-        Task<Workbench?> GetWorkbench(int id);
+        // Workbench CRUD
+        Task<Workbench?> GetWorkbench(int workbenchId);
         Task<IEnumerable<Workbench>> GetWorkbenchesForUser(string userId);
+        Task<Workbench> InsertWorkbench(Workbench workbench);
+        Task<Workbench?> UpdateWorkbench(Workbench workbench);
+        Task<bool> DeleteWorkbench(int workbenchId);
 
-        Task<Workbench?> InsertWorkbench(string userId, Workbench workbench);
-        Task<bool> UpdateWorkbench(Workbench workbench);
-        Task<bool> DeleteWorkbench(int id);
-
-        Task<bool> WorkbenchExists(int id);
-        Task<bool> UserOwnsWorkbench(int id, string userId);
-        Task<IEnumerable<string>> GetUsersForWorkbench(int workbenchId);
-        Task<bool> AddUserToWorkbench(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
-        Task<bool> RemoveUserFromWorkbench(int workbenchId, string userId);
-        Task<bool> UpdateUserRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
-
+        // Membership (the "two birds" method)
         Task<WorkbenchMember?> GetMembership(int workbenchId, string userId);
+        Task<IEnumerable<WorkbenchMember>> GetMembersForWorkbench(int workbenchId);
+        Task<bool> AddMember(WorkbenchMember member);
+        Task<bool> UpdateMemberRole(int workbenchId, string userId, WorkbenchMember.WorkbenchRole role);
+        Task<bool> RemoveMember(int workbenchId, string userId);
 
-
-
+        // Helpers
+        Task<bool> WorkbenchExists(int workbenchId);
+        Task<bool> UserExists(string userId);
     }
-
 }

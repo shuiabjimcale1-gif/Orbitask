@@ -14,6 +14,10 @@ namespace Orbitask.Data
             _connectionString = config.GetConnectionString("DefaultConnection");
         }
 
+        // ============================================
+        // GET SINGLE TASK
+        // ============================================
+
         public async Task<TaskItem?> GetTask(int taskId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -23,6 +27,10 @@ namespace Orbitask.Data
                 new { Id = taskId }
             );
         }
+
+        // ============================================
+        // GET TASKS FOR COLUMN
+        // ============================================
 
         public async Task<IEnumerable<TaskItem>> GetTasksForColumn(int columnId)
         {
@@ -34,25 +42,35 @@ namespace Orbitask.Data
             );
         }
 
+        // ============================================
+        // INSERT TASK
+        // ============================================
+
         public async Task<TaskItem> InsertTask(TaskItem task)
         {
             using var connection = new SqlConnection(_connectionString);
 
-            var sql = @"INSERT INTO TaskItems (Title, Description, Position, ColumnId, BoardId)
-                        OUTPUT INSERTED.Id,
-                        INSERTED.Title,
-                        INSERTED.Description,
-                        INSERTED.Position,
-                        INSERTED.ColumnId,
-                        INSERTED.BoardId,
-                        INSERTED.CreatedOn,
-                        INSERTED.DueDate
-                        VALUES (@Title, @Description, @Position, @ColumnId, @BoardId);
-                        ";
+            var sql = @"
+                INSERT INTO TaskItems (Title, Description, Position, ColumnId)
+                OUTPUT 
+                    INSERTED.Id,
+                    INSERTED.Title,
+                    INSERTED.Description,
+                    INSERTED.Position,
+                    INSERTED.ColumnId,
+                    INSERTED.CreatedOn,
+                    INSERTED.DueDate
+                VALUES (@Title, @Description, @Position, @ColumnId);
+            ";
+
+            // ❌ REMOVED: BoardId and WorkbenchId from INSERT
 
             return await connection.QuerySingleAsync<TaskItem>(sql, task);
         }
 
+        // ============================================
+        // UPDATE TASK
+        // ============================================
 
         public async Task<bool> UpdateTask(TaskItem task)
         {
@@ -60,20 +78,25 @@ namespace Orbitask.Data
 
             var sql = @"
                 UPDATE TaskItems
-                SET Title = @Title,
+                SET 
+                    Title = @Title,
                     Description = @Description,
                     Position = @Position,
                     ColumnId = @ColumnId,
-                    BoardId = @BoardId
-                WHERE Id = @Id;";
+                    DueDate = @DueDate
+                WHERE Id = @Id;
+            ";
+
+            // ❌ REMOVED: BoardId and WorkbenchId from UPDATE
 
             var rows = await connection.ExecuteAsync(sql, task);
             return rows > 0;
         }
 
-        
+        // ============================================
         // DELETE TASK
-        
+        // ============================================
+
         public async Task<bool> DeleteTask(int taskId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -83,13 +106,15 @@ namespace Orbitask.Data
 
             try
             {
-                
+                // 1) Delete TaskTags first (foreign key dependency)
+                // ✅ FIXED: TaskId → TaskItemId
                 await connection.ExecuteAsync(
-                    "DELETE FROM TaskTags WHERE TaskId = @Id;",
+                    "DELETE FROM TaskTags WHERE TaskItemId = @Id;",
                     new { Id = taskId },
                     transaction: tx
                 );
 
+                // 2) Delete the TaskItem
                 var rows = await connection.ExecuteAsync(
                     "DELETE FROM TaskItems WHERE Id = @Id;",
                     new { Id = taskId },
@@ -97,7 +122,7 @@ namespace Orbitask.Data
                 );
 
                 tx.Commit();
-                return rows > 0; 
+                return rows > 0;
             }
             catch
             {
@@ -106,45 +131,61 @@ namespace Orbitask.Data
             }
         }
 
+        // ============================================
+        // ATTACH TAG TO TASK
+        // ============================================
 
-
-        
-        // ATTACH TAG
-        
         public async Task<bool> AttachTag(int taskId, int tagId)
         {
             using var connection = new SqlConnection(_connectionString);
 
+            // ✅ FIXED: TaskId → TaskItemId
             var sql = @"
-            IF NOT EXISTS (
-                SELECT 1 FROM TaskTags WHERE TaskId = @TaskId AND TagId = @TagId
-            )
-            INSERT INTO TaskTags (TaskId, TagId)
-            VALUES (@TaskId, @TagId);
-        ";
+                -- Only insert if not already exists
+                IF NOT EXISTS (
+                    SELECT 1 FROM TaskTags 
+                    WHERE TaskItemId = @TaskItemId AND TagId = @TagId
+                )
+                BEGIN
+                    INSERT INTO TaskTags (TaskItemId, TagId)
+                    VALUES (@TaskItemId, @TagId);
+                END
+            ";
 
-            await connection.ExecuteAsync(sql, new { TaskId = taskId, TagId = tagId });
+            await connection.ExecuteAsync(sql, new
+            {
+                TaskItemId = taskId,  // ✅ Renamed parameter
+                TagId = tagId
+            });
+
             return true;
         }
 
-        
-        // REMOVE TAG
-        
+        // ============================================
+        // REMOVE TAG FROM TASK
+        // ============================================
+
         public async Task<bool> RemoveTag(int taskId, int tagId)
         {
             using var connection = new SqlConnection(_connectionString);
 
+            // ✅ FIXED: TaskId → TaskItemId
             var rows = await connection.ExecuteAsync(
-                "DELETE FROM TaskTags WHERE TaskId = @TaskId AND TagId = @TagId",
-                new { TaskId = taskId, TagId = tagId }
+                "DELETE FROM TaskTags WHERE TaskItemId = @TaskItemId AND TagId = @TagId",
+                new
+                {
+                    TaskItemId = taskId,  // ✅ Renamed parameter
+                    TagId = tagId
+                }
             );
 
             return rows > 0;
         }
 
-        
+        // ============================================
         // EXISTENCE CHECKS
-        
+        // ============================================
+
         public async Task<bool> TaskExists(int taskId)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -175,38 +216,27 @@ namespace Orbitask.Data
             );
         }
 
-        
-        // BOARD LOOKUPS
-        
-        public async Task<int?> GetBoardIdForTask(int taskId)
+        // ============================================
+        // TENANCY HELPER (NEW)
+        // ============================================
+
+        /// <summary>
+        /// Gets the WorkbenchId for a task by JOINing through Column and Board.
+        /// This is used for authorization checks in the controller.
+        /// </summary>
+        public async Task<int?> GetWorkbenchIdForTask(int taskId)
         {
             using var connection = new SqlConnection(_connectionString);
 
-            return await connection.ExecuteScalarAsync<int?>(
-                "SELECT BoardId FROM TaskItems WHERE Id = @Id",
-                new { Id = taskId }
-            );
-        }
-
-        public async Task<int?> GetBoardIdForColumn(int columnId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-
-            return await connection.ExecuteScalarAsync<int?>(
-                "SELECT BoardId FROM Columns WHERE Id = @Id",
-                new { Id = columnId }
-            );
-        }
-
-        public async Task<int?> GetBoardIdForTag(int tagId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-
-            return await connection.ExecuteScalarAsync<int?>(
-                "SELECT BoardId FROM Tags WHERE Id = @Id",
-                new { Id = tagId }
+            // ✅ NEW: Join through hierarchy to get WorkbenchId
+            return await connection.QuerySingleOrDefaultAsync<int?>(@"
+                SELECT b.WorkbenchId 
+                FROM TaskItems t
+                INNER JOIN Columns c ON t.ColumnId = c.Id
+                INNER JOIN Boards b ON c.BoardId = b.Id
+                WHERE t.Id = @TaskId",
+                new { TaskId = taskId }
             );
         }
     }
-
 }
