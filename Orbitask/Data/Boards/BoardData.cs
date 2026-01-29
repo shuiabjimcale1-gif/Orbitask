@@ -1,9 +1,9 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
-using Orbitask.Data.Interfaces;
+using Orbitask.Data.Boards.Interfaces;
 using Orbitask.Models;
 
-namespace Orbitask.Data
+namespace Orbitask.Data.Boards
 {
     public class BoardData : IBoardData
     {

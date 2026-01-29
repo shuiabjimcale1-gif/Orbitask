@@ -1,4 +1,4 @@
-﻿using Orbitask.Data.Interfaces;
+﻿using Orbitask.Data.Boards.Interfaces;
 using Orbitask.Models;
 using Orbitask.Services.Interfaces;
 

@@ -45,7 +45,7 @@ namespace Orbitask.Database
             modelBuilder.Entity<WorkbenchMember>()
                 .HasIndex(wm => wm.WorkbenchId)
                 .IsUnique()
-                .HasFilter("[Role] = 0");  
+                .HasFilter("[Role] = 0");
 
             // ============================================
             // TASK TAG (TaskItem <-> Tag)
@@ -105,6 +105,75 @@ namespace Orbitask.Database
                 .WithMany()
                 .HasForeignKey(t => t.ColumnId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // ============================================
+            // CHAT CONFIGURATION
+            // ============================================
+
+            modelBuilder.Entity<Chat>()
+                .HasKey(c => c.Id);
+
+            // Convert enum to int for storage
+            modelBuilder.Entity<Chat>()
+                .Property(c => c.Type)
+                .HasConversion<int>();
+
+            // Foreign key to Workbench (cascade delete)
+            modelBuilder.Entity<Chat>()
+                .HasOne<Workbench>()
+                .WithMany()
+                .HasForeignKey(c => c.WorkbenchId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // ============================================
+            // CHATUSER CONFIGURATION (Many-to-Many)
+            // ============================================
+
+            // Composite primary key
+            modelBuilder.Entity<ChatUser>()
+                .HasKey(cu => new { cu.ChatId, cu.UserId });
+
+            // Convert enum to int for storage (nullable)
+            modelBuilder.Entity<ChatUser>()
+                .Property(cu => cu.Role)
+                .HasConversion<int?>();
+
+            // Foreign key to Chat (cascade delete)
+            modelBuilder.Entity<ChatUser>()
+                .HasOne<Chat>()
+                .WithMany()
+                .HasForeignKey(cu => cu.ChatId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Foreign key to User (cascade delete)
+            modelBuilder.Entity<ChatUser>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(cu => cu.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // ============================================
+            // MESSAGE CONFIGURATION
+            // ============================================
+
+            modelBuilder.Entity<Message>()
+                .HasKey(m => m.Id);
+
+            // Foreign key to Chat (cascade delete)
+            modelBuilder.Entity<Message>()
+                .HasOne<Chat>()
+                .WithMany()
+                .HasForeignKey(m => m.ChatId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Foreign key to User (no action to avoid cascade cycles)
+            // Messages remain for audit trail even if user deleted
+            modelBuilder.Entity<Message>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
+
     }
 }
