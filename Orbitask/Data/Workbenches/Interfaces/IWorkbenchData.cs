@@ -1,6 +1,6 @@
 ﻿using Orbitask.Models;
 
-namespace Orbitask.Data.Interfaces
+namespace Orbitask.Data.Workbenches.Interfaces
 {
     public interface IWorkbenchData
     {
