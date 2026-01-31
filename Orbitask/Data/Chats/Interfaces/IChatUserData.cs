@@ -1,6 +1,6 @@
 ﻿using Orbitask.Models;
 
-namespace Orbitask.Data.Interfaces
+namespace Orbitask.Data.Chats.Interfaces
 {
     public interface IChatUserData
     {

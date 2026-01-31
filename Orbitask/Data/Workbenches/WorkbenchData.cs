@@ -1,7 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
 using Orbitask.Data.Workbenches.Interfaces;
-using Orbitask.Data.Workbenches.Interfaces;
 using Orbitask.Models;
 
 namespace Orbitask.Data.Workbenches

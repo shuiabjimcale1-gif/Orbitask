@@ -1,9 +1,9 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
-using Orbitask.Data.Interfaces;
+using Orbitask.Data.Chats.Interfaces;
 using Orbitask.Models;
 
-namespace Orbitask.Data
+namespace Orbitask.Data.Chats
 {
     public class MessageData : IMessageData
     {
