@@ -5,12 +5,16 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Orbitask.Data.Boards;
 using Orbitask.Data.Boards.Interfaces;
-using Orbitask.Data.Workbenches.Interfaces;
+using Orbitask.Data.Chats;
+using Orbitask.Data.Chats.Interfaces;
 using Orbitask.Data.Workbenches;
 using Orbitask.Data.Workbenches.Interfaces;
 using Orbitask.Database;
+using Orbitask.Hubs;
 using Orbitask.Models;
 using Orbitask.Services;
+using Orbitask.Services.Chats;
+using Orbitask.Services.Chats.Interfaces;
 using Orbitask.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +22,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
@@ -93,7 +99,25 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JWT:SigningKey"]))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/chathub"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
+
 
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<ITaskItemService, TaskItemService>();
@@ -106,6 +130,14 @@ builder.Services.AddScoped<ITaskItemData, TaskItemData>();
 builder.Services.AddScoped<IColumnData, ColumnData>();
 builder.Services.AddScoped<IBoardData, BoardData>();
 builder.Services.AddScoped<IWorkbenchData, WorkbenchData>();
+
+builder.Services.AddScoped<IChatData, ChatData>();
+builder.Services.AddScoped<IChatUserData, ChatUserData>();
+builder.Services.AddScoped<IMessageData, MessageData>();
+
+// Service Layer (existing)
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 
@@ -125,5 +157,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/chathub");
+
+
 
 app.Run();
